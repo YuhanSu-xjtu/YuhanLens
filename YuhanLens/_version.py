@@ -2,9 +2,9 @@ import json
 
 version_json = '''
 {
- "date": "2022-04-15T00:00:00-0000",
+ "date": "2022-04-17T00:00:00-0000",
  "author": "YuhanSu",
- "version": "0.1.3"
+ "version": "0.1.4"
 }
 '''
 

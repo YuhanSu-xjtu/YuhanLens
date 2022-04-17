@@ -9,10 +9,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import utils
+from . import info
 from . import plotting
+from . import utils
 from ._version import get_versions
 
 __version__ = get_versions()["version"]
 del get_versions
-__all__ = ["utils", "plotting", "_version"]
+__all__ = ["utils", "plotting", "_version", "info"]

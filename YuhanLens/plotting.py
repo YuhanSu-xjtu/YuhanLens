@@ -35,9 +35,10 @@ def plot_ic(dataset: pd.DataFrame, logger: bool = True):
     return ic, ic_mean, ir
 
 
-def plot_quantile(dataset: pd.DataFrame, long_short: bool = False, logger: bool = True):
+def plot_quantile(dataset: pd.DataFrame, long_short: bool = False, compare: bool = False, logger: bool = True):
     """
      因子分层和多空曲线
+    :param compare: 是否只比较最大和最小的净值曲线，当compare=True时，long_short函数无效
     :param logger: 日志输出
     :param dataset: merge_returns_factor得到的处理好的因子和收益率数据集
     :param long_short:是否计算多空组合
@@ -57,7 +58,8 @@ def plot_quantile(dataset: pd.DataFrame, long_short: bool = False, logger: bool 
 
     net = net.shift(1).fillna(1.0)
     net = net.append(end)
-
+    if compare:
+        net = net.iloc[:, [0, net.shape[1] - 3]]
     net.plot(kind="line")
     plt.show()
     if logger:
