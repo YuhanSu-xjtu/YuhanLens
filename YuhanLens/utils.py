@@ -75,9 +75,15 @@ def get_clean_factor(factor: pd.Series, quantiles: int = 10, standard: bool = Fa
     """
 
     def quantile_calc(group, buckets: int):
+        """
+        因子分组函数
+        """
         return pd.qcut(x=group, q=buckets, labels=False) + 1
 
     def z_score(group):
+        """
+        因子截面标准化函数
+        """
         group = (group - group.mean()) / group.std()
         return group
 
@@ -144,7 +150,7 @@ def merge_multi_factors_dataset(factors: list, forward_return: pd.Series) -> pd.
     return merge_dataset
 
 
-def cross_sectional_regression(model, dataset: pd.DataFrame, save_path: str = "") -> pd.Series:
+def cross_sectional_regression(model, dataset: pd.DataFrame, save_path: str = "") -> bool:
     """
     截面回归，每个截面获得一个模型
     :param save_path: 模型保存路径
@@ -153,7 +159,7 @@ def cross_sectional_regression(model, dataset: pd.DataFrame, save_path: str = ""
     :return: 索引为时间，值为该时间的回归模型保存路径
     """
 
-    def regression(group):
+    def regression(group: pd.DataFrame):
         print("横截面回归", model)
         return 0
 
@@ -164,11 +170,11 @@ def cross_sectional_regression(model, dataset: pd.DataFrame, save_path: str = ""
             os.mkdir(path)
 
     create_dir_not_exist(path=save_path)
-    models_info = dataset.groupby("datetime").apply(regression)
-    return models_info
+    dataset.groupby("datetime").apply(regression)
+    return True
 
 
-def sliding_window_regression(model, dataset: pd.DataFrame, save_path: str = "", window: int = 3) -> pd.Series:
+def sliding_window_regression(model, dataset: pd.DataFrame, save_path: str = "", window: int = 3) -> bool:
     """
     滑窗回归，每个滑窗获得一个模型
     :param save_path: 模型保存路径
@@ -188,18 +194,18 @@ def sliding_window_regression(model, dataset: pd.DataFrame, save_path: str = "",
         elif not os.path.exists(path):
             os.mkdir(path)
 
-    def sliding_window(dataset: pd.DataFrame, window: int = 3) -> list:
-        time_index = dataset.index.get_level_values(level=0).unique()
-        rolling_window = [time_index[window_start:window_start + window] for window_start in
-                          range(0, len(time_index) - window + 1, 1)]
+    def sliding_window(data: pd.DataFrame, windows: int = 3) -> list:
+        time_index = data.index.get_level_values(level=0).unique()
+        rolling_window = [time_index[window_start:window_start + windows] for window_start in
+                          range(0, len(time_index) - windows + 1, 1)]
         return rolling_window
 
     create_dir_not_exist(path=save_path)
     dataset.reset_index(level=1, drop=False, inplace=True)
-    sliding = sliding_window(dataset=dataset, window= window)
-    for i in range(len(sliding)):
-        # 并行
-        window_dataset = dataset.loc[sliding[i], :]
-        regression_save(model=model, data=window_dataset)
+    sliding = sliding_window(data=dataset, windows=window)
 
-    return 0
+    for i in range(len(sliding)):
+        window_dataset = dataset.loc[sliding[i], :]
+        regression_save(data=window_dataset)
+
+    return True
