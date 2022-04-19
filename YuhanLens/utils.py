@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 
 
@@ -16,7 +18,7 @@ def read_file(path: str) -> pd.Series:
 
 
 def compute_forward_lag_returns(price: pd.DataFrame, periods: int = 1, holding: int = 1,
-                                lag: int = 0) -> pd.Series():
+                                lag: int = 0) -> pd.Series(dtype="float64"):
     """
    只接受股票的调仓日期的价格
    因子日期和股票价格两者的日期需要对应
@@ -35,12 +37,12 @@ def compute_forward_lag_returns(price: pd.DataFrame, periods: int = 1, holding: 
 
     returns = returns.stack(dropna=True)
     returns.index.set_names(names="stockcode", level=1, inplace=True)
-    returns.rename(index=str(holding) + "P", inplace=True)
+    returns.rename(index=str(holding) + "H", inplace=True)
 
     return returns
 
 
-def compute_forward_returns(price: pd.DataFrame, periods: int = 1, holding: int = 1) -> pd.Series():
+def compute_forward_returns(price: pd.DataFrame, periods: int = 1, holding: int = 1) -> pd.Series(dtype="float64"):
     """
     只接受股票的调仓日期的价格
     因子日期和股票价格两者的日期需要对应
@@ -150,21 +152,25 @@ def cross_sectional_regression(model, dataset: pd.DataFrame, save_path: str = ""
     :param dataset: 多因子数据集
     :return: 索引为时间，值为该时间的回归模型保存路径
     """
-    if save_path == "":
-        raise ValueError("保存路径不能为空")
 
     def regression(group):
-        print(group)
-        pass
+        print("横截面回归", model)
+        return 0
 
+    def create_dir_not_exist(path):
+        if path == "":
+            raise ValueError("保存路径不能为空")
+        elif not os.path.exists(path):
+            os.mkdir(path)
+
+    create_dir_not_exist(path=save_path)
     models_info = dataset.groupby("datetime").apply(regression)
     return models_info
-    pass
 
 
 def sliding_window_regression(model, dataset: pd.DataFrame, save_path: str = "", window: int = 3) -> pd.Series:
     """
-    截面回归，每个滑窗获得一个模型
+    滑窗回归，每个滑窗获得一个模型
     :param save_path: 模型保存路径
     :param window: 滑窗长度
     :param model: 回归模型
@@ -172,12 +178,28 @@ def sliding_window_regression(model, dataset: pd.DataFrame, save_path: str = "",
     :return: 索引为时间，值为该时间的回归模型保存路径
     """
 
-    def regression(group):
-        print(group)
-        pass
+    def regression_save(data: pd.DataFrame):
+        print("滑窗回归", model)
+        return 0
 
-    if save_path == "":
-        raise ValueError("保存路径不能为空")
+    def create_dir_not_exist(path):
+        if path == "":
+            raise ValueError("保存路径不能为空")
+        elif not os.path.exists(path):
+            os.mkdir(path)
 
-    models_info = dataset.groupby("datetime").apply(regression)
-    return models_info
+    def sliding_window(dataset: pd.DataFrame, window: int = 3) -> list:
+        time_index = dataset.index.get_level_values(level=0).unique()
+        rolling_window = [time_index[window_start:window_start + window] for window_start in
+                          range(0, len(time_index) - window + 1, 1)]
+        return rolling_window
+
+    create_dir_not_exist(path=save_path)
+    dataset.reset_index(level=1, drop=False, inplace=True)
+    sliding = sliding_window(dataset=dataset, window= window)
+    for i in range(len(sliding)):
+        # 并行
+        window_dataset = dataset.loc[sliding[i], :]
+        regression_save(model=model, data=window_dataset)
+
+    return 0
