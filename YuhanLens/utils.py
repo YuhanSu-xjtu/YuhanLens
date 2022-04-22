@@ -100,6 +100,45 @@ def get_clean_factor(factor: pd.Series, quantiles: int = 10, standard: bool = Fa
     return factor
 
 
+def get_industry_factor(relation_stock_and_industry: pd.Series, industry_factor: pd.Series,
+                        top_industry: int = 5, bottom_industry: int = 5) -> pd.DataFrame():
+
+    """
+    用于计算行业轮动策略的因子，与get_clean_factor用法相似，但无法计算IC（行业轮动的IC没有太大意义）
+    :param relation_stock_and_industry: 股票与行业的对应关系
+    :param industry_factor: 行业因子的dataframe
+    :param top_industry: 选前n个行业为1组
+    :param bottom_industry: 选后n个行业为1组
+    :return: 将几个行业合并为一组
+    """
+
+    def bin_calc(group, top_n, bottom_n):
+        """
+        行业分组函数
+        """
+        buckets_list = sorted(group.unique(), reverse=False)
+        buckets_list = [buckets_list[0] - 0.001, buckets_list[bottom_industry], buckets_list[-top_industry] - 0.001,
+                        buckets_list[-1]]
+        return pd.cut(x=group, bins=buckets_list, include_lowest=False, right=True, labels=False) + 1
+
+    relation_stock_and_industry = relation_stock_and_industry.to_frame()
+    relation_stock_and_industry.reset_index(inplace=True)
+    relation_stock_and_industry.set_index(["datetime", "industry"], inplace=True)
+    industry_factor = pd.merge(left=relation_stock_and_industry, right=industry_factor, left_index=True,
+                               right_index=True,
+                               how="inner")
+
+    industry_factor.reset_index(inplace=True)
+    industry_factor.set_index(["datetime", "stockcode"], inplace=True)
+    industry_factor = industry_factor.iloc[:, -1]
+
+    bucket = industry_factor.groupby("datetime").apply(bin_calc, top_n=top_industry, bottom_n=bottom_industry)
+    bucket.rename(index="Group", inplace=True)
+    # industry_factor = pd.merge(left=industry_factor, right=bucket, left_index=True, right_index=True, how="inner")
+    # return industry_factor
+    return bucket
+
+
 def merge_returns_factor(forward_return: pd.DataFrame, clean_factor: pd.DataFrame) -> pd.DataFrame():
     """
     将因子组和收益率合并-->数据集
@@ -197,15 +236,15 @@ def sliding_window_regression(model, dataset: pd.DataFrame, save_path: str = "",
     def sliding_window(data: pd.DataFrame, windows: int = 3) -> list:
         time_index = data.index.get_level_values(level=0).unique()
         rolling_window = [time_index[window_start:window_start + windows] for window_start in
-                          range(0, len(time_index) - windows + 1, 1)]
+                          range(0, len(time_index) - windows + 1, windows)]
         return rolling_window
 
     create_dir_not_exist(path=save_path)
     dataset.reset_index(level=1, drop=False, inplace=True)
     sliding = sliding_window(data=dataset, windows=window)
 
-    for i in range(len(sliding)):
-        window_dataset = dataset.loc[sliding[i], :]
+    for index in sliding:
+        window_dataset = dataset.loc[index, :]
         regression_save(data=window_dataset)
 
     return True

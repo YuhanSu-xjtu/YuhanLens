@@ -54,8 +54,8 @@ def plot_quantile(dataset: pd.DataFrame, long_short: bool = False, compare: bool
     dataset.columns.set_names(names=None, inplace=True)
     if long_short:
         dataset["TopBottom"] = dataset.iloc[:, len(dataset.columns) - 1] - dataset.iloc[:, 0]
-        dataset["MidBottom"] = dataset.iloc[:, int(len(dataset.columns) / 2) - 1] - dataset.iloc[:, 0]
-        dataset["-1"] = - dataset.iloc[:, 0]
+        # dataset["MidBottom"] = dataset.iloc[:, int(len(dataset.columns) / 2) - 1] - dataset.iloc[:, 0]
+        # dataset["-1"] = - dataset.iloc[:, 0]
 
     dataset = dataset + 1
     net = dataset.cumprod()
