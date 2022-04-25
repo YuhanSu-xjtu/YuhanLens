@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import pandas as pd
 
 
@@ -102,9 +103,8 @@ def get_clean_factor(factor: pd.Series, quantiles: int = 10, standard: bool = Fa
 
 def get_industry_factor(relation_stock_and_industry: pd.Series, industry_factor: pd.Series,
                         top_industry: int = 5, bottom_industry: int = 5) -> pd.DataFrame():
-
     """
-    用于计算行业轮动策略的因子，与get_clean_factor用法相似，但无法计算IC（行业轮动的IC没有太大意义）
+    用于计算个股行业轮动策略的因子，行业股票等权配置，与get_clean_factor用法相似，但无法计算IC（行业轮动的IC没有太大意义）
     :param relation_stock_and_industry: 股票与行业的对应关系
     :param industry_factor: 行业因子的dataframe
     :param top_industry: 选前n个行业为1组
@@ -117,8 +117,8 @@ def get_industry_factor(relation_stock_and_industry: pd.Series, industry_factor:
         行业分组函数
         """
         buckets_list = sorted(group.unique(), reverse=False)
-        buckets_list = [buckets_list[0] - 0.001, buckets_list[bottom_industry], buckets_list[-top_industry] - 0.001,
-                        buckets_list[-1]]
+        buckets_list = [-np.inf, buckets_list[bottom_industry], buckets_list[-top_industry] - 0.001,
+                        np.inf]
         return pd.cut(x=group, bins=buckets_list, include_lowest=False, right=True, labels=False) + 1
 
     relation_stock_and_industry = relation_stock_and_industry.to_frame()
@@ -136,6 +136,32 @@ def get_industry_factor(relation_stock_and_industry: pd.Series, industry_factor:
     bucket.rename(index="Group", inplace=True)
     # industry_factor = pd.merge(left=industry_factor, right=bucket, left_index=True, right_index=True, how="inner")
     # return industry_factor
+    return bucket
+
+
+def get_industry_index_factor(industry_factor: pd.Series,
+                              top_industry: int = 3, bottom_industry: int = 3) -> pd.DataFrame():
+    """
+    用于计算指数行业轮动策略的因子，适用于ETF投资
+    与get_clean_factor用法相似，但无法计算IC（行业轮动的IC没有太大意义）
+    :param industry_factor: 行业因子的dataframe
+    :param top_industry: 选前n个行业为1组
+    :param bottom_industry: 选后n个行业为1组
+    :return: 将几个行业合并为一组
+    """
+
+    def bin_calc(group, top_n, bottom_n):
+        """
+        行业分组函数
+        """
+        buckets_list = sorted(group.unique(), reverse=False)
+        buckets_list = [-np.inf, buckets_list[bottom_industry-1], buckets_list[-top_industry]-0.0001,
+                        np.inf]
+        return pd.cut(x=group, bins=buckets_list, include_lowest=False, right=True, labels=False) + 1
+
+    bucket = industry_factor.groupby("datetime").apply(bin_calc, top_n=top_industry, bottom_n=bottom_industry)
+    bucket.rename(index="Group", inplace=True)
+
     return bucket
 
 

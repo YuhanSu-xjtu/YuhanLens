@@ -48,15 +48,16 @@ def plot_quantile(dataset: pd.DataFrame, long_short: bool = False, compare: bool
     :param long_short:是否计算多空组合
     :return: 净值曲线
     """
+
     returns = dataset.columns.get_level_values(level=0)[-1]
     dataset = dataset.groupby(["datetime", "Group"])[returns].mean()
     dataset = dataset.unstack()
     dataset.columns.set_names(names=None, inplace=True)
+
     if long_short:
         dataset["TopBottom"] = dataset.iloc[:, len(dataset.columns) - 1] - dataset.iloc[:, 0]
         # dataset["MidBottom"] = dataset.iloc[:, int(len(dataset.columns) / 2) - 1] - dataset.iloc[:, 0]
         # dataset["-1"] = - dataset.iloc[:, 0]
-
     dataset = dataset + 1
     net = dataset.cumprod()
     end = net.iloc[-1, :]
