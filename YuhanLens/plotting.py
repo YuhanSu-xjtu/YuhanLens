@@ -6,7 +6,7 @@ def plot_ic(dataset: pd.DataFrame, period: tuple = (3, 1), logger: bool = True):
     """
     计算因子IC序列，作图
     返回作图数据
-    :param period: 图表显示持仓时间和调仓周期
+    :param period: 图表显示调仓周期和持仓时间
     :param logger: 日志输出
     :param dataset: merge_returns_factor的返回值
     :return: IC序列，IC平均值，IR
