@@ -325,13 +325,14 @@ def neutulize(dataset: pd.DataFrame, marketvalue: bool = True, industry: bool = 
             group = group.droplevel(0)
             group.columns = ['factor', 'marketvalue', 'industry']
             group.marketvalue = group.marketvalue.apply(lambda x: math.log(x))
-            industry = set(group.industry)
-            # 行索引是股票代码，列索引是行业
-            industry_df = pd.DataFrame(0, columns=industry, index=group.index.get_level_values(0))
-            temp = group.groupby("industry").groups
-            for indust in industry:
-                codes = temp[indust].get_level_values(0)
-                industry_df.loc[codes, indust] = 1
+            # industry = set(group.industry)
+            # # 行索引是股票代码，列索引是行业
+            # industry_df = pd.DataFrame(0, columns=industry, index=group.index.get_level_values(0))
+            # temp = group.groupby("industry").groups
+            # for indust in industry:
+            #     codes = temp[indust].get_level_values(0)
+            #     industry_df.loc[codes, indust] = 1
+            industry_df = pd.get_dummies(group['industry'])
             X = pd.merge(left=group.marketvalue, right=industry_df, left_index=True, right_index=True, how="inner")
             result = sm.OLS(group.factor.astype(float), X.astype(float)).fit()
             return result.resid
@@ -354,13 +355,14 @@ def neutulize(dataset: pd.DataFrame, marketvalue: bool = True, industry: bool = 
         def neut(group):
             group = group.droplevel(0)
             group.columns = ['factor', 'industry']
-            industry = set(group.industry)
-            # 行索引是股票代码，列索引是行业
-            industry_df = pd.DataFrame(0, columns=industry, index=group.index.get_level_values(0))
-            temp = group.groupby("industry").groups
-            for indust in industry:
-                codes = temp[indust].get_level_values(0)
-                industry_df.loc[codes, indust] = 1
+            # industry = set(group.industry)
+            # # 行索引是股票代码，列索引是行业
+            # industry_df = pd.DataFrame(0, columns=industry, index=group.index.get_level_values(0))
+            # temp = group.groupby("industry").groups
+            # for indust in industry:
+            #     codes = temp[indust].get_level_values(0)
+            #     industry_df.loc[codes, indust] = 1
+            industry_df = pd.get_dummies(group['industry'])
             result = sm.OLS(group.factor.astype(float), industry_df.astype(float)).fit()
             return result.resid
 
