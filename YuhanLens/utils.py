@@ -2,8 +2,8 @@ import os
 
 import numpy as np
 import pandas as pd
-
-
+import statsmodels.api as sm
+import math
 def read_file(path: str) -> pd.Series:
     """
     建议多重索引的单因子文件使用这种读取方式，读取单索引的股票价格数据的时候不需要
@@ -274,3 +274,96 @@ def sliding_window_regression(model, dataset: pd.DataFrame, save_path: str = "",
         regression_save(data=window_dataset)
 
     return True
+
+### 下面是我更新的
+
+
+def merge_factor_marketvalue(clean_factor: pd.DataFrame, marketvalue: pd.DataFrame, ) -> pd.DataFrame():
+    """
+    将因子和市值数据合并-->数据集
+    :param clean_factor: get_clean_factor函数处理后的因子
+    :param marketvalue: 市值数据（单行索引：时间，列是code）
+    :return: 处理好的因子和行业数据数据
+    """
+    marketvalue.index = pd.to_datetime(marketvalue.index)
+    marketvalue = marketvalue.stack(dropna=True)
+    marketvalue.index.set_names(names="datetime", level=0, inplace=True)
+    marketvalue.index.set_names(names="stockcode", level=1, inplace=True)
+    marketvalue = pd.DataFrame(marketvalue)
+    marketvalue.columns = ['marketvalue']
+    merge_dataset = pd.merge(left=clean_factor, right=marketvalue, left_index=True, right_index=True, how="inner")
+    merge_dataset.dropna(inplace=True)
+
+    return merge_dataset
+
+
+def merge_factor_industry(clean_factor: pd.DataFrame, industry: pd.DataFrame, ) -> pd.DataFrame():
+    """
+    将因子和行业数据合并-->数据集
+    :param clean_factor: get_clean_factor函数处理后的因子
+    :param industry: 行业数据（双索引，必须和clean_factor一致）
+    :return: 处理好的因子和行业数据数据
+    """
+    merge_dataset = pd.merge(left=clean_factor, right=industry, left_index=True, right_index=True, how="inner")
+    merge_dataset.dropna(inplace=True)
+
+    return merge_dataset
+
+
+def neutulize(dataset: pd.DataFrame, marketvalue: bool = True, industry: bool = True) -> pd.DataFrame:
+    """
+    对因子中性化
+    :param dataset：双索引（时间，代码),columns = [factor,(marketvalue),(industry)]
+    :param marketvalue: 是否市值中性化
+    :param industry: 是否行业中性化
+    :return: 中性化好的数据
+    """
+    if marketvalue and industry:
+        print('市值行业中性化')
+
+        def neut(group):
+            group = group.droplevel(0)
+            group.columns = ['factor', 'marketvalue', 'industry']
+            group.marketvalue = group.marketvalue.apply(lambda x: math.log(x))
+            # industry = set(group.industry)
+            # # 行索引是股票代码，列索引是行业
+            # industry_df = pd.DataFrame(0, columns=industry, index=group.index.get_level_values(0))
+            # temp = group.groupby("industry").groups
+            # for indust in industry:
+            #     codes = temp[indust].get_level_values(0)
+            #     industry_df.loc[codes, indust] = 1
+            industry_df = pd.get_dummies(group['industry'])
+            X = pd.merge(left=group.marketvalue, right=industry_df, left_index=True, right_index=True, how="inner")
+            result = sm.OLS(group.factor.astype(float), X.astype(float)).fit()
+            return result.resid
+
+        return dataset.groupby("datetime").apply(neut)
+    if marketvalue:
+        print('市值中性化')
+
+        def neut(group):
+            group = group.droplevel(0)
+            group.columns = ['factor', 'marketvalue']
+            group.marketvalue = group.marketvalue.apply(lambda x: math.log(x))
+            result = sm.OLS(group.factor.astype(float), group.marketvalue.astype(float)).fit()
+            return result.resid
+
+        return dataset.groupby("datetime").apply(neut)
+    if industry:
+        print('行业中性化')
+
+        def neut(group):
+            group = group.droplevel(0)
+            group.columns = ['factor', 'industry']
+            # industry = set(group.industry)
+            # # 行索引是股票代码，列索引是行业
+            # industry_df = pd.DataFrame(0, columns=industry, index=group.index.get_level_values(0))
+            # temp = group.groupby("industry").groups
+            # for indust in industry:
+            #     codes = temp[indust].get_level_values(0)
+            #     industry_df.loc[codes, indust] = 1
+            industry_df = pd.get_dummies(group['industry'])
+            result = sm.OLS(group.factor.astype(float), industry_df.astype(float)).fit()
+            return result.resid
+
+        return dataset.groupby("datetime").apply(neut)
